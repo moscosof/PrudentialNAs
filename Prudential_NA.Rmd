@@ -1,0 +1,217 @@
+---
+title: "Prudential Data Wrangling"
+author: "Francia Moscoso"
+date: "April 20, 2016"
+output: html_document
+---
+**Loading Libraries**
+```{r LoadLib, message=F, warning=F}
+library(dplyr)     
+library(corrplot) 
+library(ggplot2)
+library(Amelia)
+library(foreign)
+library(nnet)
+library(reshape2)
+```
+
+ 
+
+**Loading Data Sets**
+```{r comment="", echo=TRUE}
+# Working Directory
+setwd("~/SprintboardProject/PrudentialIns")  
+
+# Load raw data to 'train' and 'test' repositories
+train <- read.csv("./DataSets/train.csv", header = TRUE)
+test <-  read.csv("./DataSets/test.csv", header = TRUE)
+
+```
+
+
+**Evaluate missing data**
+```{r comment="", echo=TRUE}
+#missmap(train, main = "Missing values vs observed")
+
+```
+
+**Nine columns with missing data:**<br>
+Insurance_History_5, Family_Hist_2 THRU Family_Hist_5, Medical_History_1, Medical_History_10,Medical_History15,Medical_History24,Medical_History32
+
+**Percentage of missing data**
+```{r comment="", echo=TRUE}
+#Number of rows in training data set
+#TotRow <- nrow(train) 
+
+#train %>% filter(is.na(Insurance_History_5)) %>% count()/TotRow
+#train %>% filter(is.na(Family_Hist_2)) %>% count()/TotRow
+#train %>% filter(is.na(Family_Hist_3)) %>% count()/TotRow
+#train %>% filter(is.na(Family_Hist_4)) %>% count()/TotRow
+#train %>% filter(is.na(Family_Hist_5)) %>% count()/TotRow
+#train %>% filter(is.na(Medical_History_10)) %>% count()/TotRow
+#train %>% filter(is.na(Medical_History_15)) %>% count()/TotRow
+#train %>% filter(is.na(Medical_History_24)) %>% count()/TotRow
+#train %>% filter(is.na(Medical_History_32)) %>% count()/TotRow
+
+
+```
+<br>
+**The following columns have significant missing data (>30%) so we need to analyze if they should be included in our model or not**<br>
+Insurance_History_5 (42.76%)<br>
+Family_Hist_2(48.25%)<br>
+Family_Hist_3(57.66%)<br>
+Family_Hist_4(32.30%)            
+Family_Hist_5(70.41)<br>
+Medical_History_10(99.06%)<br>
+Medical_History_15(75.10%)<br>
+Medical_History_24(93.59%)<br>
+Medical_History_32(98.13%)<br>
+
+**Convert each of the missing independent variables to 3 different outcomes: Original, Binary(0,1), and Imputed(Median) to review their significance**
+```{r comment="", echo=TRUE}
+#BINARY
+tempo_tra <- train
+tempo_tra$Insurance_History_5_B <- tempo_tra$Insurance_History_5
+tempo_tra$Insurance_History_5_B[is.na(tempo_tra$Insurance_History_5)] <- 0
+tempo_tra$Insurance_History_5_B[!(tempo_tra$Insurance_History_5==0)] <- 1
+
+tempo_tra$Family_Hist_2_B <- tempo_tra$Family_Hist_2
+tempo_tra$Family_Hist_2_B[is.na(tempo_tra$Family_Hist_2)] <- 0
+tempo_tra$Family_Hist_2_B[!(tempo_tra$Family_Hist_2==0)] <- 1
+
+tempo_tra$Family_Hist_3_B <- tempo_tra$Family_Hist_3
+tempo_tra$Family_Hist_3_B[is.na(tempo_tra$Family_Hist_3)] <- 0
+tempo_tra$Family_Hist_3_B[!(tempo_tra$Family_Hist_3==0)] <- 1
+
+tempo_tra$Family_Hist_4_B <- tempo_tra$Family_Hist_4
+tempo_tra$Family_Hist_4_B[is.na(tempo_tra$Family_Hist_4)] <- 0
+tempo_tra$Family_Hist_4_B[!(tempo_tra$Family_Hist_4==0)] <- 1
+
+tempo_tra$Family_Hist_5_B <- tempo_tra$Family_Hist_5
+tempo_tra$Family_Hist_5_B[is.na(tempo_tra$Family_Hist_5)] <- 0
+tempo_tra$Family_Hist_5_B[!(tempo_tra$Family_Hist_5==0)] <- 1
+
+tempo_tra$Medical_History_10_B <- tempo_tra$Medical_History_10
+tempo_tra$Medical_History_10_B[is.na(tempo_tra$Medical_History_10)] <- 0
+tempo_tra$Medical_History_10_B[!(tempo_tra$Medical_History_10==0)] <- 1
+
+tempo_tra$Medical_History_15_B <- tempo_tra$Medical_History_15
+tempo_tra$Medical_History_15_B[is.na(tempo_tra$Medical_History_15)] <- 0
+tempo_tra$Medical_History_15_B[!(tempo_tra$Medical_History_15==0)] <- 1
+
+tempo_tra$Medical_History_24_B <- tempo_tra$Medical_History_24
+tempo_tra$Medical_History_24_B[is.na(tempo_tra$Medical_History_24)] <- 0
+tempo_tra$Medical_History_24_B[!(tempo_tra$Medical_History_24==0)] <- 1
+
+tempo_tra$Medical_History_32_B <- tempo_tra$Medical_History_32
+tempo_tra$Medical_History_32_B[is.na(tempo_tra$Medical_History_32)] <- 0
+tempo_tra$Medical_History_32_B[!(tempo_tra$Medical_History_32==0)] <- 1
+
+
+#MEDIAN
+tempo_tra$Insurance_History_5_M <- tempo_tra$Insurance_History_5
+tempo_tra$Insurance_History_5_M[is.na(train$Insurance_History_5)] <- median(train$Insurance_History_5,na.rm=TRUE)
+
+tempo_tra$Family_Hist_2_M <-tempo_tra$Family_Hist_2
+tempo_tra$Family_Hist_2_M[is.na(train$Family_Hist_2)] <- median(train$Family_Hist_2,na.rm=TRUE)
+
+tempo_tra$Family_Hist_3_M <-tempo_tra$Family_Hist_3
+tempo_tra$Family_Hist_3_M[is.na(train$Family_Hist_3)] <- median(train$Family_Hist_3,na.rm=TRUE)
+
+tempo_tra$Family_Hist_4_M <-tempo_tra$Family_Hist_4
+tempo_tra$Family_Hist_4_M[is.na(train$Family_Hist_4)] <- median(train$Family_Hist_4,na.rm=TRUE)
+
+tempo_tra$Family_Hist_5_M <-tempo_tra$Family_Hist_5
+tempo_tra$Family_Hist_5_M[is.na(train$Family_Hist_5)] <- median(train$Family_Hist_5,na.rm=TRUE)
+
+tempo_tra$Medical_History_10_M <-tempo_tra$Medical_History_10
+tempo_tra$Medical_History_10_M[is.na(train$Medical_History_10)] <- median(train$Medical_History_10,na.rm=TRUE)
+
+tempo_tra$Medical_History_15_M <-tempo_tra$Medical_History_15
+tempo_tra$Medical_History_15_M[is.na(train$Medical_History_15)] <- median(train$Medical_History_15,na.rm=TRUE)
+
+tempo_tra$Medical_History_24_M <-tempo_tra$Medical_History_24
+tempo_tra$Medical_History_24_M[is.na(train$Medical_History_24)] <- median(train$Medical_History_24,na.rm=TRUE)
+
+tempo_tra$Medical_History_32_M <-tempo_tra$Medical_History_32
+tempo_tra$Medical_History_32_M[is.na(train$Medical_History_32)] <- median(train$Medical_History_32,na.rm=TRUE)
+
+#Verifing Binary Values
+#table(tempo_tra$Insurance_History_5_B)
+#table(tempo_tra$Family_Hist_2_B)
+#table(tempo_tra$Family_Hist_3_B)
+#table(tempo_tra$Family_Hist_4_B)
+#table(tempo_tra$Family_Hist_5_B)
+#table(tempo_tra$Medical_History_10_B)
+#table(tempo_tra$Medical_History_15_B)
+#table(tempo_tra$Medical_History_24_B)
+#table(tempo_tra$Medical_History_32_B)
+
+#Verifing Median Values
+#table(tempo_tra$Insurance_History_5_M==(median(train$Insurance_History_5,na.rm=TRUE)))
+#table(tempo_tra$Family_Hist_2_M==(median(train$Family_Hist_2,na.rm=TRUE)))
+#table(tempo_tra$Family_Hist_3_M==(median(train$Family_Hist_3,na.rm=TRUE)))
+#table(tempo_tra$Family_Hist_4_M==(median(train$Family_Hist_4,na.rm=TRUE)))
+#table(tempo_tra$Family_Hist_5_M==(median(train$Family_Hist_5,na.rm=TRUE)))
+#table(tempo_tra$Medical_History_10_M==(median(train$Medical_History_10,na.rm=TRUE)))
+#table(tempo_tra$Medical_History_15_M==(median(train$Medical_History_15,na.rm=TRUE)))
+#table(tempo_tra$Medical_History_24_M==(median(train$Medical_History_24,na.rm=TRUE)))
+#table(tempo_tra$Medical_History_32_M==(median(train$Medical_History_32,na.rm=TRUE)))
+
+```
+
+
+**Invoking Multinom Regression**
+```{r comment="", echo=TRUE}
+#Adding factor to Response
+tempo_tra$Response <- as.factor(tempo_tra$Response)
+
+tempo_tra$Response_8 <- relevel(tempo_tra$Response, ref = 8)
+
+tempo_tra$Response_8 <- relevel(tempo_tra$Response, ref = 8)
+
+test <- multinom(Response_8 ~ Insurance_History_5_B + Insurance_History_5_M + 
+                              Family_Hist_2_B + Family_Hist_2_M + 
+                              Family_Hist_3_B + Family_Hist_3_M + 
+                              Family_Hist_4_B + Family_Hist_4_M + 
+                              Family_Hist_5_B + Family_Hist_5_M +
+                              Medical_History_10_B + Medical_History_10_M +
+                              Medical_History_15_B + Medical_History_15_M +  
+                              Medical_History_24_B + Medical_History_24_M + 
+                              Medical_History_32_B +  Medical_History_32_M, data=tempo_tra)
+
+
+summary(test)
+ 
+```
+
+**The multinom package does not include p-value calculation for the regression coefficients, so we calculate p-values using Wald tests (here z-tests).**
+```{r comment="", echo=TRUE}
+z <- summary(test)$coefficients/summary(test)$standard.errors
+z
+```
+
+ 
+```{r comment="", echo=TRUE}
+#2-tailed z test
+p <- (1 - pnorm(abs(z), 0, 1))*2
+p
+write.csv(p, "p.csv", row.names = T)
+```
+
+
+**Extract the coefficients from the model and exponentiate**
+```{r comment="", echo=TRUE}
+coef <- exp(coef(test))
+write.csv(coef, "coef.csv", row.names = T)
+```
+
+**You can calculate predicted probabilities for each of our outcome levels using the fitted function. We can start by generating the predicted probabilities for the observations in our dataset and viewing the first few rows.**
+```{r}
+head(pp <- fitted(test))
+```
+<br>
+<br>
+<br>
+<br>
+<br>
